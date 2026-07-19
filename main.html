@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>準二級プラス 二次試験トレーナー</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    min-height: 100%;
+    transition: background-color 0.15s ease;
+  }
+  body.flash { background-color: #7f1d1d; }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  header {
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid #1e293b;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  header h1 { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+  header .back {
+    font-size: 0.8rem; color: #818cf8; background: none; border: none; cursor: pointer; padding: 6px;
+  }
+  main { flex: 1; padding: 20px; overflow-y: auto; }
+  .screen { display: none; }
+  .screen.active { display: block; animation: fadein 0.2s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+
+  .card {
+    background: #1e293b;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .eyebrow { font-size: 0.7rem; color: #818cf8; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 6px; text-transform: uppercase; }
+  .lead { font-size: 0.95rem; color: #cbd5e1; line-height: 1.6; margin-bottom: 16px; }
+
+  .btn {
+    display: block; width: 100%; padding: 15px; border-radius: 12px; border: none;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer; margin-bottom: 10px; text-align: center;
+  }
+  .btn-primary { background: #6366f1; color: white; }
+  .btn-primary:active { background: #4f46e5; }
+  .btn-secondary { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+  .btn-secondary:active { background: #334155; }
+  .btn-danger { background: #7f1d1d; color: #fecaca; }
+  .btn:disabled { opacity: 0.4; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .chip {
+    padding: 9px 14px; border-radius: 999px; background: #1e293b; border: 1px solid #334155;
+    font-size: 0.8rem; color: #cbd5e1; cursor: pointer;
+  }
+  .chip.selected { background: #6366f1; border-color: #6366f1; color: white; }
+
+  .weak-summary {
+    background: linear-gradient(135deg, #312e81, #1e1b4b);
+    border-radius: 16px; padding: 16px; margin-bottom: 16px;
+  }
+  .weak-summary .eyebrow { color: #a5b4fc; }
+  .weak-summary .tag-name { font-size: 1.05rem; font-weight: 700; color: #f1f5f9; margin-bottom: 2px; }
+  .weak-summary .tag-count { font-size: 0.75rem; color: #a5b4fc; }
+
+  .step-indicator { display: flex; gap: 6px; margin-bottom: 18px; }
+  .step-dot { flex: 1; height: 4px; border-radius: 2px; background: #334155; }
+  .step-dot.done { background: #6366f1; }
+  .step-dot.current { background: #818cf8; }
+
+  .passage-box {
+    background: #0b1120; border-radius: 12px; padding: 16px; font-size: 1rem; line-height: 1.8;
+    color: #f1f5f9; margin-bottom: 14px; border: 1px solid #1e293b;
+  }
+  .meta-tags { display: flex; gap: 6px; margin-bottom: 12px; }
+  .meta-tag { font-size: 0.65rem; padding: 3px 8px; border-radius: 999px; background: #1e293b; color: #94a3b8; }
+
+  .ring-wrap { display: flex; flex-direction: column; align-items: center; margin: 20px 0; }
+  .status-ring {
+    width: 140px; height: 140px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    background: #1e293b; border: 5px solid #334155; margin-bottom: 12px; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .status-ring.speaking { border-color: #22c55e; box-shadow: 0 0 20px rgba(34,197,94,0.35); }
+  .status-ring.silent { border-color: #f59e0b; box-shadow: 0 0 20px rgba(245,158,11,0.35); }
+  .status-ring.danger { border-color: #ef4444; box-shadow: 0 0 26px rgba(239,68,68,0.6); animation: pulse 0.5s infinite; }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+  .ring-timer { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .ring-label { font-size: 0.65rem; color: #94a3b8; margin-top: 2px; }
+  .status-text { text-align: center; font-size: 0.8rem; color: #94a3b8; margin-bottom: 14px; }
+
+  .rec-controls { display: flex; gap: 10px; }
+  .rec-controls .btn { margin-bottom: 0; }
+
+  .recordings-list { margin-top: 14px; }
+  .recording-item {
+    display: flex; align-items: center; justify-content: space-between; background: #0b1120;
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: 0.8rem;
+  }
+  .recording-item a { color: #818cf8; text-decoration: none; font-weight: 600; }
+
+  .tag-select-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  textarea {
+    width: 100%; background: #0b1120; border: 1px solid #334155; border-radius: 12px; color: #e2e8f0;
+    padding: 12px; font-size: 0.85rem; line-height: 1.6; margin-bottom: 14px; min-height: 80px; resize: vertical;
+    font-family: inherit;
+  }
+  textarea::placeholder { color: #64748b; }
+
+  .stat-grid { display: flex; gap: 10px; margin-bottom: 16px; }
+  .stat-box { flex: 1; background: #1e293b; border-radius: 12px; padding: 14px; text-align: center; }
+  .stat-box .num { font-size: 1.5rem; font-weight: 700; color: #f1f5f9; }
+  .stat-box .label { font-size: 0.65rem; color: #94a3b8; margin-top: 2px; }
+
+  .bar-row { margin-bottom: 10px; }
+  .bar-row .bar-head { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; color: #cbd5e1; }
+  .bar-track { height: 10px; background: #0b1120; border-radius: 6px; overflow: hidden; }
+  .bar-fill-stat { height: 100%; background: linear-gradient(90deg, #6366f1, #818cf8); border-radius: 6px; }
+
+  .history-item {
+    border-left: 3px solid #6366f1; padding: 10px 0 10px 14px; margin-bottom: 8px;
+  }
+  .history-item .h-date { font-size: 0.7rem; color: #64748b; }
+  .history-item .h-title { font-size: 0.85rem; color: #e2e8f0; font-weight: 600; margin: 2px 0 4px; }
+  .history-item .h-tags { font-size: 0.7rem; color: #a5b4fc; }
+
+  .empty-note { font-size: 0.8rem; color: #64748b; text-align: center; padding: 30px 10px; }
+
+  .nav-tabs { display: flex; border-top: 1px solid #1e293b; }
+  .nav-tab { flex: 1; padding: 12px; text-align: center; font-size: 0.7rem; color: #64748b; background: none; border: none; }
+  .nav-tab.active { color: #818cf8; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <button class="back" id="backBtn" style="visibility:hidden">← 戻る</button>
+    <h1 id="headerTitle">準二級プラス トレーナー</h1>
+    <span style="width:40px"></span>
+  </header>
+
+  <main>
+
+    <!-- ホーム -->
+    <section class="screen active" id="screen-home">
+      <div class="weak-summary" id="weakSummaryBox" style="display:none">
+        <div class="eyebrow">重点対策カテゴリ</div>
+        <div class="tag-name" id="weakTagName">-</div>
+        <div class="tag-count" id="weakTagCount">-</div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">今日の練習</div>
+        <div class="lead">パッセージ音読・内容質問・意見質問の3ステップをまとめて練習します。弱点カテゴリを優先して出題します。</div>
+        <button class="btn btn-primary" id="startTodayBtn">今日のおすすめ問題で始める</button>
+        <button class="btn btn-secondary" id="chooseCategoryBtn">カテゴリを選んで練習する</button>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">記録</div>
+        <div class="lead">これまでの練習回数と、よくつまずくポイントを確認できます。</div>
+        <button class="btn btn-secondary" id="goDashboardBtn">練習記録・弱点分析を見る</button>
+      </div>
+    </section>
+
+    <!-- カテゴリ選択 -->
+    <section class="screen" id="screen-select">
+      <div class="card">
+        <div class="eyebrow">トピック分野</div>
+        <div class="chip-row" id="categoryChips"></div>
+        <div class="eyebrow">難易度</div>
+        <div class="chip-row" id="difficultyChips"></div>
+        <button class="btn btn-primary" id="startSelectedBtn">この条件で開始</button>
+      </div>
+    </section>
+
+    <!-- 練習画面 -->
+    <section class="screen" id="screen-practice">
+      <div class="step-indicator" id="stepIndicator"></div>
+      <div class="meta-tags" id="practiceMetaTags"></div>
+
+      <div id="stepContent"></div>
+
+      <div class="ring-wrap">
+        <div class="status-ring" id="ring">
+          <div style="text-align:center">
+            <div class="ring-timer" id="ringTimer">0.0</div>
+            <div class="ring-label">秒 沈黙中</div>
+          </div>
+        </div>
+      </div>
+      <div class="status-text" id="statusText">録音ボタンを押して開始</div>
+
+      <div class="rec-controls">
+        <button class="btn btn-primary" id="recordBtn" style="flex:1">🎤 録音開始</button>
+        <button class="btn btn-danger" id="stopRecBtn" style="flex:1; display:none">■ 停止</button>
+      </div>
+      <button class="btn btn-secondary" id="speakBtn">🔊 読み上げる</button>
+
+      <div class="recordings-list" id="recordingsList"></div>
+
+      <button class="btn btn-primary" id="nextStepBtn" style="margin-top:16px">次へ進む</button>
+    </section>
+
+    <!-- 振り返り -->
+    <section class="screen" id="screen-review">
+      <div class="card">
+        <div class="eyebrow">今回気になった点を選択</div>
+        <div class="tag-select-row" id="tagSelectRow"></div>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Claudeからのフィードバックを貼り付け(任意)</div>
+        <div class="lead" style="margin-bottom:8px">録音をこのチャットに送って添削してもらった内容を貼り付けると、該当する課題タグを自動で提案します。</div>
+        <textarea id="feedbackPaste" placeholder="ここに添削結果を貼り付け..."></textarea>
+        <button class="btn btn-secondary" id="analyzeFeedbackBtn">貼り付けた内容からタグを提案</button>
+      </div>
+      <div class="card">
+        <div class="eyebrow">自分用メモ(任意)</div>
+        <textarea id="selfNote" placeholder="気づいたこと、次回意識したいことなど"></textarea>
+      </div>
+      <button class="btn btn-primary" id="saveReviewBtn">記録して終了</button>
+    </section>
+
+    <!-- ダッシュボード -->
+    <section class="screen" id="screen-dashboard">
+      <div class="stat-grid">
+        <div class="stat-box"><div class="num" id="statTotal">0</div><div class="label">総練習数</div></div>
+        <div class="stat-box"><div class="num" id="statDays">0</div><div class="label">練習日数</div></div>
+        <div class="stat-box"><div class="num" id="statStreak">0</div><div class="label">連続日数</div></div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">課題タグの傾向</div>
+        <div id="tagBars"><div class="empty-note">まだ記録がありません</div></div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">最近の練習</div>
+        <div id="historyList"><div class="empty-note">まだ記録がありません</div></div>
+      </div>
+
+      <button class="btn btn-danger" id="clearDataBtn">記録を全て削除</button>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ============ データ ============ */
+const CATEGORIES = [
+  { id: 'home', label: '家庭' },
+  { id: 'school', label: '学校' },
+  { id: 'work', label: '職場' },
+  { id: 'community', label: '地域' },
+  { id: 'phone', label: '電話' },
+  { id: 'announcement', label: 'アナウンス' }
+];
+const DIFFICULTIES = [
+  { id: 'easy', label: '易' },
+  { id: 'standard', label: '標準' },
+  { id: 'hard', label: 'やや難' }
+];
+const TAGS = ['発音・アクセント','流暢さ(間が多い)','文法','語彙','内容理解のズレ','意見の理由不足','意見の構成(型)'];
+
+const PASSAGES = [
+  { id:'h1', category:'home', difficulty:'easy',
+    text:"Many families in Japan are trying to save energy at home. Some parents turn off lights in rooms that no one is using. Others use fans instead of air conditioners on mild days. These small habits can lower electricity bills and also help protect the environment for future generations.",
+    contentQ:"According to the passage, how do some parents try to save energy?",
+    opinionQ:"Do you think schools should teach children about saving energy? Why or why not?" },
+  { id:'h2', category:'home', difficulty:'standard',
+    text:"These days, more households are growing vegetables in small home gardens. Parents say that gardening helps children understand where food comes from. Also, families can enjoy fresh vegetables without spending much money. However, taking care of a garden every day can be difficult for busy families.",
+    contentQ:"According to the passage, why do parents think gardening is good for children?",
+    opinionQ:"Do you think it is important for children to help with housework? Why or why not?" },
+  { id:'s1', category:'school', difficulty:'easy',
+    text:"At many junior high schools, students take turns cleaning their classrooms. Teachers believe that this activity teaches students to take care of shared spaces. Some students find cleaning tiring after a long day of classes. Still, many students say they feel proud when their classroom looks clean.",
+    contentQ:"According to the passage, why do teachers think cleaning is a good activity for students?",
+    opinionQ:"Do you think students should be allowed to use smartphones during school breaks? Why or why not?" },
+  { id:'s2', category:'school', difficulty:'standard',
+    text:"Some schools have started giving students more freedom to choose their own class projects. Teachers hope this will make learning more interesting for students. Students who choose their own topics often work harder and remember more information. On the other hand, some students feel confused without clear instructions.",
+    contentQ:"According to the passage, what do teachers hope will happen when students choose their own projects?",
+    opinionQ:"Do you think it is a good idea for students to choose their own class projects? Why or why not?" },
+  { id:'w1', category:'work', difficulty:'standard',
+    text:"Many companies now allow employees to work from home a few days a week. Workers say they can spend more time with their families and save time on commuting. However, some managers worry that it is harder to communicate with team members who are not in the office.",
+    contentQ:"According to the passage, what do workers say about working from home?",
+    opinionQ:"Do you think working from home is better than working in an office? Why or why not?" },
+  { id:'w2', category:'work', difficulty:'hard',
+    text:"A growing number of companies are introducing four-day work weeks for their employees. Supporters say that shorter work weeks improve employee health and increase productivity during working hours. Critics, however, point out that some tasks may take longer to complete, which could create problems for customers who need quick service.",
+    contentQ:"According to the passage, what do critics say about four-day work weeks?",
+    opinionQ:"Do you think companies should introduce four-day work weeks? Why or why not?" },
+  { id:'c1', category:'community', difficulty:'easy',
+    text:"Every autumn, a local community center holds a festival for families in the neighborhood. Volunteers set up food stalls and games for children. Many residents say the festival is a good chance to meet their neighbors. The center hopes the event will continue for many years.",
+    contentQ:"According to the passage, why do many residents like the festival?",
+    opinionQ:"Do you think community events are important for a neighborhood? Why or why not?" },
+  { id:'c2', category:'community', difficulty:'standard',
+    text:"Some cities have started placing more recycling bins in public parks and train stations. City officials hope this will encourage people to recycle more often. Early results show that the amount of recycled plastic has increased in areas with more bins. Still, some people forget to sort their garbage correctly.",
+    contentQ:"According to the passage, what do city officials hope will happen with more recycling bins?",
+    opinionQ:"Do you think local governments should do more to encourage recycling? Why or why not?" },
+  { id:'p1', category:'phone', difficulty:'standard',
+    text:"Hello, this is Green Valley Sports Club. Thank you for calling. Our swimming pool will be closed for cleaning next Monday and Tuesday. All other facilities, including the gym and tennis courts, will be open as usual. If you have any questions, please speak to a staff member at the front desk.",
+    contentQ:"According to the message, which facility will be closed next Monday and Tuesday?",
+    opinionQ:"Do you think exercise facilities like gyms are important for people's health? Why or why not?" },
+  { id:'a1', category:'announcement', difficulty:'standard',
+    text:"Attention all passengers. Due to heavy rain, the 3:15 train to Central Station will be delayed by about twenty minutes. We apologize for any inconvenience this may cause. Passengers who need to transfer to other lines should ask station staff for assistance. Thank you for your patience and understanding.",
+    contentQ:"According to the announcement, why is the train delayed?",
+    opinionQ:"Do you think public transportation in your area is convenient? Why or why not?" },
+  { id:'a2', category:'announcement', difficulty:'hard',
+    text:"May I have your attention, please. The museum will be closing in fifteen minutes. Visitors are kindly asked to make their way to the main exit. Please remember to collect any belongings you may have left in the lockers near the entrance. We hope you enjoyed your visit and look forward to welcoming you again soon.",
+    contentQ:"According to the announcement, what are visitors asked to remember before leaving?",
+    opinionQ:"Do you think museums are a good place for families to spend time together? Why or why not?" },
+  { id:'h3', category:'home', difficulty:'hard',
+    text:"An increasing number of elderly people are choosing to live alone rather than move in with their children. While many value their independence, this trend has raised concerns among local governments about elderly residents who may need help in emergencies. Some communities have started programs in which volunteers regularly check on elderly neighbors.",
+    contentQ:"According to the passage, why are local governments concerned about elderly people living alone?",
+    opinionQ:"Do you think communities should do more to support elderly people who live alone? Why or why not?" }
+];
+
+/* ============ ストレージ ============ */
+const STORAGE_KEY = 'eiken_p2plus_attempts';
+function loadAttempts() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; }
+}
+function saveAttempt(attempt) {
+  const all = loadAttempts();
+  all.push(attempt);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+}
+function clearAttempts() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+function computeTagStats() {
+  const all = loadAttempts();
+  const counts = {};
+  TAGS.forEach(t => counts[t] = 0);
+  all.forEach(a => (a.tags || []).forEach(t => { if (counts[t] !== undefined) counts[t]++; }));
+  return counts;
+}
+
+function getTopWeakTag() {
+  const counts = computeTagStats();
+  let top = null, max = 0;
+  Object.entries(counts).forEach(([tag, n]) => { if (n > max) { max = n; top = tag; } });
+  return max > 0 ? { tag: top, count: max } : null;
+}
+
+/* ============ 画面遷移 ============ */
+const screens = ['home','select','practice','review','dashboard'];
+let screenHistory = ['home'];
+
+function showScreen(name) {
+  screens.forEach(s => document.getElementById('screen-' + s).classList.toggle('active', s === name));
+  document.getElementById('backBtn').style.visibility = name === 'home' ? 'hidden' : 'visible';
+  const titles = { home:'準二級プラス トレーナー', select:'カテゴリを選ぶ', practice:'練習中', review:'振り返り', dashboard:'練習記録' };
+  document.getElementById('headerTitle').textContent = titles[name];
+}
+function goTo(name) {
+  screenHistory.push(name);
+  showScreen(name);
+  if (name === 'home') renderHome();
+  if (name === 'dashboard') renderDashboard();
+}
+document.getElementById('backBtn').addEventListener('click', () => {
+  if (isRecording) stopRecording();
+  screenHistory.pop();
+  const prev = screenHistory[screenHistory.length - 1] || 'home';
+  showScreen(prev);
+  if (prev === 'home') renderHome();
+});
+
+/* ============ ホーム ============ */
+function renderHome() {
+  const weak = getTopWeakTag();
+  const box = document.getElementById('weakSummaryBox');
+  if (weak) {
+    box.style.display = 'block';
+    document.getElementById('weakTagName').textContent = weak.tag;
+    document.getElementById('weakTagCount').textContent = `直近の記録で ${weak.count} 回選択されています`;
+  } else {
+    box.style.display = 'none';
+  }
+}
+
+document.getElementById('goDashboardBtn').addEventListener('click', () => goTo('dashboard'));
+
+document.getElementById('startTodayBtn').addEventListener('click', () => {
+  const weak = getTopWeakTag();
+  let pool = PASSAGES;
+  // 弱点が「意見の理由不足」「意見の構成」系なら難易度標準〜やや難を優先、それ以外はランダム
+  currentPassage = pool[Math.floor(Math.random() * pool.length)];
+  startPractice();
+});
+
+/* ============ カテゴリ選択 ============ */
+let selectedCategory = null, selectedDifficulty = null;
+function renderChips() {
+  const catRow = document.getElementById('categoryChips');
+  catRow.innerHTML = '';
+  CATEGORIES.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'chip';
+    el.textContent = c.label;
+    el.addEventListener('click', () => {
+      selectedCategory = c.id;
+      [...catRow.children].forEach(ch => ch.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+    catRow.appendChild(el);
+  });
+  const diffRow = document.getElementById('difficultyChips');
+  diffRow.innerHTML = '';
+  DIFFICULTIES.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'chip';
+    el.textContent = d.label;
+    el.addEventListener('click', () => {
+      selectedDifficulty = d.id;
+      [...diffRow.children].forEach(ch => ch.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+    diffRow.appendChild(el);
+  });
+}
+renderChips();
+document.getElementById('chooseCategoryBtn').addEventListener('click', () => goTo('select'));
+document.getElementById('startSelectedBtn').addEventListener('click', () => {
+  let pool = PASSAGES;
+  if (selectedCategory) pool = pool.filter(p => p.category === selectedCategory);
+  if (selectedDifficulty) pool = pool.filter(p => p.difficulty === selectedDifficulty);
+  if (pool.length === 0) pool = PASSAGES;
+  currentPassage = pool[Math.floor(Math.random() * pool.length)];
+  startPractice();
+});
+
+/* ============ 練習画面 ============ */
+let currentPassage = null;
+let currentStep = 0; // 0=音読 1=内容質問 2=意見質問
+const STEP_LABELS = ['音読', '内容質問', '意見質問'];
+let recordings = []; // {step, url, blob}
+
+function startPractice() {
+  currentStep = 0;
+  recordings = [];
+  document.getElementById('recordingsList').innerHTML = '';
+  renderStep();
+  goTo('practice');
+}
+
+function renderStep() {
+  const dotsWrap = document.getElementById('stepIndicator');
+  dotsWrap.innerHTML = '';
+  STEP_LABELS.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'step-dot' + (i < currentStep ? ' done' : i === currentStep ? ' current' : '');
+    dotsWrap.appendChild(dot);
+  });
+
+  const catLabel = CATEGORIES.find(c => c.id === currentPassage.category).label;
+  const diffLabel = DIFFICULTIES.find(d => d.id === currentPassage.difficulty).label;
+  document.getElementById('practiceMetaTags').innerHTML =
+    `<span class="meta-tag">${catLabel}</span><span class="meta-tag">${diffLabel}</span><span class="meta-tag">${STEP_LABELS[currentStep]}</span>`;
+
+  const content = document.getElementById('stepContent');
+  if (currentStep === 0) {
+    content.innerHTML = `<div class="card"><div class="eyebrow">パッセージを音読してください</div><div class="passage-box">${currentPassage.text}</div></div>`;
+  } else if (currentStep === 1) {
+    content.innerHTML = `<div class="card"><div class="eyebrow">内容質問に答えてください</div><div class="passage-box">${currentPassage.contentQ}</div></div>`;
+  } else {
+    content.innerHTML = `<div class="card"><div class="eyebrow">意見質問に答えてください</div><div class="passage-box">${currentPassage.opinionQ}</div></div>`;
+  }
+
+  document.getElementById('nextStepBtn').textContent = currentStep < 2 ? '次へ進む' : '振り返りへ進む';
+  resetRing();
+}
+
+function currentSpeakText() {
+  if (currentStep === 0) return currentPassage.text;
+  if (currentStep === 1) return currentPassage.contentQ;
+  return currentPassage.opinionQ;
+}
+
+document.getElementById('speakBtn').addEventListener('click', () => {
+  const utter = new SpeechSynthesisUtterance(currentSpeakText());
+  utter.lang = 'en-US';
+  utter.rate = 0.95;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+});
+
+document.getElementById('nextStepBtn').addEventListener('click', () => {
+  if (isRecording) stopRecording();
+  if (currentStep < 2) {
+    currentStep++;
+    renderStep();
+  } else {
+    goTo('review');
+    resetReviewScreen();
+  }
+});
+
+/* ============ 録音＋沈黙検知 ============ */
+let audioContext, analyser, micStream, dataArray, mediaRecorder, chunks = [];
+let silenceStart = null, animationId = null, isRecording = false, hasVibrated = false;
+const SILENCE_THRESHOLD_SEC = 3.0;
+const VOLUME_CUTOFF = 15;
+
+const ring = document.getElementById('ring');
+const ringTimer = document.getElementById('ringTimer');
+const statusText = document.getElementById('statusText');
+const recordBtn = document.getElementById('recordBtn');
+const stopRecBtn = document.getElementById('stopRecBtn');
+
+function resetRing() {
+  ring.className = 'status-ring';
+  ringTimer.textContent = '0.0';
+  statusText.textContent = '録音ボタンを押して開始';
+  document.body.classList.remove('flash');
+}
+
+recordBtn.addEventListener('click', startRecording);
+stopRecBtn.addEventListener('click', stopRecording);
+
+async function startRecording() {
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    statusText.textContent = 'マイクへのアクセスが許可されませんでした';
+    return;
+  }
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const source = audioContext.createMediaStreamSource(micStream);
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.smoothingTimeConstant = 0.4;
+  source.connect(analyser);
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+  chunks = [];
+  try {
+    mediaRecorder = new MediaRecorder(micStream);
+    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+    mediaRecorder.onstop = handleRecordingStop;
+    mediaRecorder.start();
+  } catch (e) {
+    // MediaRecorder unsupported; silence detection still works
+  }
+
+  isRecording = true;
+  silenceStart = null;
+  hasVibrated = false;
+  recordBtn.style.display = 'none';
+  stopRecBtn.style.display = 'block';
+  statusText.textContent = '録音中...';
+  loop();
+}
+
+function loop() {
+  if (!isRecording) return;
+  analyser.getByteFrequencyData(dataArray);
+  let sum = 0;
+  for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+  const avgVolume = sum / dataArray.length;
+  const speaking = avgVolume > VOLUME_CUTOFF;
+
+  if (speaking) {
+    silenceStart = null;
+    hasVibrated = false;
+    ring.className = 'status-ring speaking';
+    statusText.textContent = '話しています';
+    ringTimer.textContent = '0.0';
+    document.body.classList.remove('flash');
+  } else {
+    if (silenceStart === null) silenceStart = performance.now();
+    const silentSec = (performance.now() - silenceStart) / 1000;
+    ringTimer.textContent = silentSec.toFixed(1);
+    if (silentSec < SILENCE_THRESHOLD_SEC * 0.6) {
+      ring.className = 'status-ring silent';
+      statusText.textContent = '沈黙中...';
+    } else if (silentSec < SILENCE_THRESHOLD_SEC) {
+      ring.className = 'status-ring silent';
+      statusText.textContent = 'そろそろ話しましょう';
+    } else {
+      ring.className = 'status-ring danger';
+      statusText.textContent = '⚠️ 沈黙が続いています';
+      document.body.classList.add('flash');
+      if (!hasVibrated) {
+        if ('vibrate' in navigator) navigator.vibrate([200, 100, 200, 100, 300]);
+        hasVibrated = true;
+      }
+    }
+  }
+  animationId = requestAnimationFrame(loop);
+}
+
+function stopRecording() {
+  isRecording = false;
+  if (animationId) cancelAnimationFrame(animationId);
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  if (audioContext) audioContext.close();
+  resetRing();
+  recordBtn.style.display = 'block';
+  stopRecBtn.style.display = 'none';
+}
+
+function handleRecordingStop() {
+  if (chunks.length === 0) return;
+  const blob = new Blob(chunks, { type: 'audio/webm' });
+  const url = URL.createObjectURL(blob);
+  const stepLabel = STEP_LABELS[currentStep];
+  recordings.push({ step: stepLabel, url });
+  const list = document.getElementById('recordingsList');
+  const item = document.createElement('div');
+  item.className = 'recording-item';
+  item.innerHTML = `<span>${stepLabel}の録音</span><a href="${url}" download="eiken_${stepLabel}_${Date.now()}.webm">保存 / 送信用に開く</a>`;
+  list.appendChild(item);
+}
+
+/* ============ 振り返り ============ */
+let selectedTags = new Set();
+
+function resetReviewScreen() {
+  selectedTags = new Set();
+  document.getElementById('feedbackPaste').value = '';
+  document.getElementById('selfNote').value = '';
+  renderTagSelect();
+}
+
+function renderTagSelect() {
+  const row = document.getElementById('tagSelectRow');
+  row.innerHTML = '';
+  TAGS.forEach(tag => {
+    const el = document.createElement('div');
+    el.className = 'chip' + (selectedTags.has(tag) ? ' selected' : '');
+    el.textContent = tag;
+    el.addEventListener('click', () => {
+      if (selectedTags.has(tag)) selectedTags.delete(tag); else selectedTags.add(tag);
+      renderTagSelect();
+    });
+    row.appendChild(el);
+  });
+}
+
+// 簡易キーワード解析：フィードバック本文から課題タグを自動提案(無料・ローカル処理)
+const KEYWORD_MAP = [
+  { tag:'発音・アクセント', words:['発音','アクセント','pronunciation','accent','聞き取りにくい'] },
+  { tag:'流暢さ(間が多い)', words:['間が','沈黙','詰まっ','fluency','pause','たどたどしい','言葉に詰まる'] },
+  { tag:'文法', words:['文法','grammar','時制','三人称','単数','複数形'] },
+  { tag:'語彙', words:['語彙','単語','vocabulary','言葉選び','表現が単調'] },
+  { tag:'内容理解のズレ', words:['質問の意図','ズレ','的外れ','内容理解','質問と合って'] },
+  { tag:'意見の理由不足', words:['理由','根拠','説明不足','reason','具体例がない','裏付け'] },
+  { tag:'意見の構成(型)', words:['構成','型','organization','structure','結論が先','I think'] }
+];
+document.getElementById('analyzeFeedbackBtn').addEventListener('click', () => {
+  const text = document.getElementById('feedbackPaste').value;
+  if (!text.trim()) return;
+  KEYWORD_MAP.forEach(({ tag, words }) => {
+    if (words.some(w => text.includes(w))) selectedTags.add(tag);
+  });
+  renderTagSelect();
+});
+
+document.getElementById('saveReviewBtn').addEventListener('click', () => {
+  const attempt = {
+    date: new Date().toISOString(),
+    category: currentPassage.category,
+    difficulty: currentPassage.difficulty,
+    passageId: currentPassage.id,
+    tags: [...selectedTags],
+    feedback: document.getElementById('feedbackPaste').value.trim(),
+    note: document.getElementById('selfNote').value.trim()
+  };
+  saveAttempt(attempt);
+  recordings.forEach(r => URL.revokeObjectURL(r.url));
+  goTo('home');
+});
+
+/* ============ ダッシュボード ============ */
+function renderDashboard() {
+  const all = loadAttempts();
+  document.getElementById('statTotal').textContent = all.length;
+
+  const dateSet = new Set(all.map(a => a.date.slice(0,10)));
+  document.getElementById('statDays').textContent = dateSet.size;
+
+  // 連続日数計算
+  const sortedDates = [...dateSet].sort().reverse();
+  let streak = 0;
+  if (sortedDates.length > 0) {
+    let cursor = new Date();
+    for (let i = 0; i < sortedDates.length; i++) {
+      const d = cursor.toISOString().slice(0,10);
+      if (sortedDates.includes(d)) { streak++; cursor.setDate(cursor.getDate() - 1); }
+      else break;
+    }
+  }
+  document.getElementById('statStreak').textContent = streak;
+
+  const counts = computeTagStats();
+  const maxCount = Math.max(1, ...Object.values(counts));
+  const barsWrap = document.getElementById('tagBars');
+  if (all.length === 0) {
+    barsWrap.innerHTML = '<div class="empty-note">まだ記録がありません</div>';
+  } else {
+    barsWrap.innerHTML = '';
+    Object.entries(counts).sort((a,b) => b[1]-a[1]).forEach(([tag, n]) => {
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `<div class="bar-head"><span>${tag}</span><span>${n}回</span></div>
+        <div class="bar-track"><div class="bar-fill-stat" style="width:${(n/maxCount*100)}%"></div></div>`;
+      barsWrap.appendChild(row);
+    });
+  }
+
+  const histWrap = document.getElementById('historyList');
+  if (all.length === 0) {
+    histWrap.innerHTML = '<div class="empty-note">まだ記録がありません</div>';
+  } else {
+    histWrap.innerHTML = '';
+    [...all].reverse().slice(0, 15).forEach(a => {
+      const catLabel = CATEGORIES.find(c => c.id === a.category)?.label || a.category;
+      const diffLabel = DIFFICULTIES.find(d => d.id === a.difficulty)?.label || a.difficulty;
+      const dateStr = new Date(a.date).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `<div class="h-date">${dateStr}</div>
+        <div class="h-title">${catLabel} / ${diffLabel}</div>
+        <div class="h-tags">${a.tags.length ? a.tags.join(' ・ ') : '課題タグなし'}</div>`;
+      histWrap.appendChild(item);
+    });
+  }
+}
+
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+  if (confirm('すべての練習記録を削除します。よろしいですか?')) {
+    clearAttempts();
+    renderDashboard();
+  }
+});
+
+/* ============ 初期表示 ============ */
+renderHome();
+</script>
+</body>
+</html>
