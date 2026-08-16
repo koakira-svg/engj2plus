@@ -1,91 +1,44 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>英単語工場 | 外部データ版</title>
-<style>
-  /* 前回のCSSをここに記述 */
-  body { background: #1e2630; color: white; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
-  .screen { display: none; }
-  .screen.active { display: block; }
-  button { padding: 15px 30px; font-size: 18px; cursor: pointer; }
-</style>
-</head>
-<body>
-<div class="stage">
-  <section class="screen active" id="screen-title">
-    <h1>英単語工場</h1>
-    <!-- データ読み込み中を明示 -->
-    <button id="startBtn" onclick="startGame('normal')" disabled>読み込み中...</button>
-    <button onclick="openDictionary()">📖 単語帳を見る</button>
-  </section>
-  <section class="screen" id="screen-challenge">
-    <div id="chPrompt" style="font-size: 24px; margin: 20px;">問題を表示中...</div>
-    <div id="chChoices"></div>
-  </section>
-</div>
-
 <script>
-let WORD_BANK = [];
+// --- 既存の initGameData などはそのまま ---
 
-// 1. 外部データの読み込み
-async function initGameData() {
-  try {
-    const response = await fetch('words.json');
-    const data = await response.json();
-    WORD_BANK = data.map((w, i) => ({
-      id: i,
-      en: w.en,
-      ja: w.ja,
-      level: (w.en.length <= 5) ? 1 : 2
-    }));
-    
-    // 読み込み完了後にボタンを有効化
-    const btn = document.getElementById('startBtn');
-    btn.disabled = false;
-    btn.textContent = "ゲーム開始";
-    console.log("読み込み完了！");
-  } catch (e) {
-    alert("words.jsonが見つかりません。同じフォルダに保存してください。");
+// --- 追加：単語帳を開く機能 ---
+function openDictionary() {
+  if (WORD_BANK.length === 0) {
+    alert("単語データがまだ読み込まれていません。");
+    return;
   }
-}
 
-// ページ開始時に読み込み
-initGameData();
-
-// 2. ゲーム開始処理
-function startGame(mode) {
-  if (WORD_BANK.length === 0) return;
-  
-  // 画面切り替え
+  // 画面を切り替える
   document.getElementById('screen-title').classList.remove('active');
-  document.getElementById('screen-challenge').classList.add('active');
   
-  // 問題を表示
-  renderQuestion();
+  // 単語帳エリアを作成（もしなければ作る）
+  let dictSection = document.getElementById('screen-dict');
+  if (!dictSection) {
+    dictSection = document.createElement('section');
+    dictSection.id = 'screen-dict';
+    dictSection.className = 'screen';
+    document.querySelector('.stage').appendChild(dictSection);
+  }
+  dictSection.classList.add('active');
+
+  // 中身を生成
+  dictSection.innerHTML = `
+    <h2>📖 単語帳 (全 ${WORD_BANK.length} 語)</h2>
+    <div id="dictGrid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px;"></div>
+    <button onclick="backToTitle()">タイトルに戻る</button>
+  `;
+
+  const gridEl = document.getElementById('dictGrid');
+  gridEl.innerHTML = WORD_BANK.map((w, index) => `
+    <div style="border: 1px solid #ccc; padding: 10px; text-align: center; cursor: pointer;" 
+         onclick="this.textContent = (this.textContent === '${w.en}') ? '${w.ja}' : '${w.en}'">
+      ${w.en}
+    </div>
+  `).join('');
 }
 
-// 3. 問題を表示するロジック
-function renderQuestion() {
-  const w = WORD_BANK[Math.floor(Math.random() * WORD_BANK.length)];
-  document.getElementById('chPrompt').textContent = w.ja;
-  
-  const choicesWrap = document.getElementById('chChoices');
-  choicesWrap.innerHTML = '';
-  
-  // 4択を作る（簡易版）
-  const options = [w.en, "apple", "book", "dog"]; // 本来はもっと複雑にランダム化
-  options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.textContent = opt;
-    btn.onclick = () => {
-      alert(opt === w.en ? "正解！" : "残念！");
-      renderQuestion();
-    };
-    choicesWrap.appendChild(btn);
-  });
+function backToTitle() {
+  document.getElementById('screen-dict').classList.remove('active');
+  document.getElementById('screen-title').classList.add('active');
 }
 </script>
-</body>
-</html>
