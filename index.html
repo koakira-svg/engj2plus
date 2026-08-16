@@ -396,9 +396,22 @@ let WORD_BANK = [];
 
 async function initGameData() {
   try {
-    const response = await fetch('words.json');
-    if (!response.ok) throw new Error('Network response was not ok');
-    const data = await response.json();
+    const response = await fetch('./words.json', { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error(`words.json を取得できませんでした (HTTP ${response.status})`);
+    }
+
+    const rawText = await response.text();
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch (jsonError) {
+      throw new Error('words.json のJSON形式が正しくありません: ' + jsonError.message);
+    }
+
+    if (!Array.isArray(data)) {
+      throw new Error('words.json は単語オブジェクトの配列である必要があります');
+    }
     
     WORD_BANK = data.map((w, i) => ({
       id: i,
